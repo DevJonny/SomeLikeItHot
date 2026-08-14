@@ -59,8 +59,29 @@ function App() {
   
   const [selectedLocation, setSelectedLocation] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return LOCATIONS.find(l => l.id === params.get('loc')) || LOCATIONS[0];
+    const locParam = params.get('loc');
+    
+    if (locParam && locParam.startsWith('custom_')) {
+      const parts = locParam.split('_');
+      if (parts.length >= 5) {
+        return {
+          id: locParam,
+          name: decodeURIComponent(parts[1]),
+          lat: parseFloat(parts[2]),
+          lon: parseFloat(parts[3]),
+          tz: decodeURIComponent(parts.slice(4).join('_')),
+          threshold: 30
+        };
+      }
+    }
+    
+    return LOCATIONS.find(l => l.id === locParam) || LOCATIONS[0];
   });
+  
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
   
   const [sortConfig, setSortConfig] = useState({ key: 'periodId', direction: 'asc' });
   
@@ -126,6 +147,42 @@ function App() {
         ? prev.filter(p => p !== id)
         : [...prev, id]
     );
+  };
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    
+    setIsSearchingApi(true);
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(searchQuery)}&count=5&language=en&format=json`);
+      const data = await res.json();
+      setSearchResults(data.results || []);
+    } catch (err) {
+      console.error("Search failed:", err);
+      setSearchResults([]);
+    } finally {
+      setIsSearchingApi(false);
+    }
+  };
+
+  const selectSearchResult = (result) => {
+    // We use "_" as a delimiter, so encode parts that might contain underscores (not likely for these fields but safe)
+    const customId = `custom_${encodeURIComponent(result.name)}_${result.latitude}_${result.longitude}_${encodeURIComponent(result.timezone)}`;
+    
+    const newLoc = {
+      id: customId,
+      name: result.name,
+      lat: result.latitude,
+      lon: result.longitude,
+      tz: result.timezone,
+      threshold: 30 // Flat default for global locations
+    };
+    
+    setSelectedLocation(newLoc);
+    setIsSearching(false);
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   const chartData = useMemo(() => {
@@ -329,12 +386,58 @@ function App() {
             <button 
               key={loc.id} 
               className={`location-tab ${selectedLocation.id === loc.id ? 'active' : ''}`}
-              onClick={() => setSelectedLocation(loc)}
+              onClick={() => { setSelectedLocation(loc); setIsSearching(false); }}
             >
               {loc.name}
             </button>
           ))}
+          {selectedLocation.id.startsWith('custom_') && (
+            <button 
+              key={selectedLocation.id} 
+              className="location-tab active"
+            >
+              {selectedLocation.name} (Custom)
+            </button>
+          )}
+          <button 
+            className={`location-tab search-btn ${isSearching ? 'active' : ''}`}
+            onClick={() => setIsSearching(!isSearching)}
+          >
+            + Search
+          </button>
         </div>
+
+        {isSearching && (
+          <div className="search-container">
+            <form onSubmit={handleSearch} className="search-form">
+              <input 
+                type="text" 
+                placeholder="Search any city globally..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+                autoFocus
+              />
+              <button type="submit" className="search-submit" disabled={isSearchingApi}>
+                {isSearchingApi ? '...' : 'Search'}
+              </button>
+            </form>
+            {searchResults.length > 0 && (
+              <div className="search-results">
+                {searchResults.map(res => (
+                  <button 
+                    key={res.id} 
+                    className="search-result-item"
+                    onClick={() => selectSearchResult(res)}
+                  >
+                    <span className="res-name">{res.name}</span>
+                    <span className="res-detail">{res.admin1 ? `${res.admin1}, ` : ''}{res.country}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <p className="app-subtitle">Daily High Temperatures ({selectedLocation.name})</p>
         <p style={{fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem'}}>
