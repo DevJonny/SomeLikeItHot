@@ -11,7 +11,8 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceArea
+  ReferenceArea,
+  ReferenceLine
 } from 'recharts';
 import './App.css';
 
@@ -158,23 +159,37 @@ function App() {
     return statsArray;
   }, [trendData, sortConfig]);
 
-  const renderTrendChart = (dataKey, color, domain = [0, 'auto'], unit = '') => (
-    <div className="chart-container">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={trendData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
-          <XAxis dataKey="year" tick={{fill: 'var(--text-secondary)', fontSize: 12}} axisLine={false} tickLine={false} />
-          <YAxis tick={{fill: 'var(--text-secondary)', fontSize: 12}} axisLine={false} tickLine={false} domain={domain} unit={unit} />
-          <Tooltip 
-            cursor={{fill: 'var(--bg-color)'}}
-            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} 
-            labelStyle={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.5rem' }}
-          />
-          <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  const renderTrendChart = (dataKey, color, domain = [0, 'auto'], unit = '') => {
+    const validData = trendData.filter(d => d[dataKey] !== undefined && !isNaN(d[dataKey]));
+    const avg = validData.length > 0 
+      ? validData.reduce((sum, item) => sum + Number(item[dataKey]), 0) / validData.length 
+      : 0;
+    const avgFormatted = Number.isInteger(avg) && dataKey !== 'avgTemp' ? Math.round(avg) : Number(avg.toFixed(1));
+
+    return (
+      <div className="chart-container">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={trendData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+            <XAxis dataKey="year" tick={{fill: 'var(--text-secondary)', fontSize: 12}} axisLine={false} tickLine={false} />
+            <YAxis tick={{fill: 'var(--text-secondary)', fontSize: 12}} axisLine={false} tickLine={false} domain={domain} unit={unit} />
+            <Tooltip 
+              cursor={{fill: 'var(--bg-color)'}}
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} 
+              labelStyle={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.5rem' }}
+            />
+            <ReferenceLine 
+              y={avgFormatted} 
+              stroke="var(--text-secondary)" 
+              strokeDasharray="4 4" 
+              label={{ position: 'top', value: `Avg: ${avgFormatted}${unit}`, fill: 'var(--text-secondary)', fontSize: 12 }} 
+            />
+            <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
