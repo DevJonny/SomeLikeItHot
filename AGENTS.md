@@ -19,3 +19,8 @@ Welcome, Agent. When working on this repository, strictly adhere to the followin
 ## 3. Deployment
 *   The site is hosted on GitHub Pages.
 *   The Vite configuration `vite.config.js` uses `base: '/SomeLikeItHot/'`. Ensure any new static assets or routing mechanisms respect this base path.
+
+## 4. Version Control
+*   **Commit Messages**: All commit messages MUST strictly follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+    *   Use types like `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, `style:`.
+    *   Always write commit messages in the imperative mood.
