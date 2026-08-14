@@ -401,6 +401,7 @@ function App() {
                       dot={false}
                       activeDot={{ r: 6 }}
                       connectNulls={true}
+                      baseValue="dataMin"
                     />
                   )
                 ))}
