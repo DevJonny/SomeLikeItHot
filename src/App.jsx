@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchWeatherData } from './weatherService';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   BarChart,
   Bar,
   Cell,
@@ -315,7 +315,7 @@ function App() {
         <>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart
+              <AreaChart
                 data={chartData}
                 margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
               >
@@ -358,12 +358,14 @@ function App() {
 
                 {PERIODS.map(period => (
                   selectedPeriods.includes(period.id) && (
-                    <Line
+                    <Area
                       key={period.id}
                       name={period.label}
                       type="monotone"
                       dataKey={period.id}
                       stroke={period.color}
+                      fill={period.color}
+                      fillOpacity={0.4}
                       strokeWidth={period.id === '1976' ? 3 : 2}
                       dot={false}
                       activeDot={{ r: 6 }}
@@ -371,7 +373,7 @@ function App() {
                     />
                   )
                 ))}
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
 
