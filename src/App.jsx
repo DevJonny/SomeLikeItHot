@@ -5,6 +5,7 @@ import {
   Area,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -16,23 +17,6 @@ import {
 } from 'recharts';
 import './App.css';
 
-const YEARS = ['1976', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'];
-
-const COLORS = {
-  '1976': 'var(--chart-1976)',
-  '2016': 'var(--chart-2016)',
-  '2017': 'var(--chart-2017)',
-  '2018': 'var(--chart-2018)',
-  '2019': 'var(--chart-2019)',
-  '2020': 'var(--chart-2020)',
-  '2021': 'var(--chart-2021)',
-  '2022': 'var(--chart-2022)',
-  '2023': 'var(--chart-2023)',
-  '2024': 'var(--chart-2024)',
-  '2025': 'var(--chart-2025)',
-  '2026': 'var(--chart-2026)',
-};
-
 const LOCATIONS = [
   { id: 'london', name: 'London', lat: 51.5072, lon: -0.1276, tz: 'Europe/London', threshold: 28 },
   { id: 'birmingham', name: 'Birmingham', lat: 52.4862, lon: -1.8904, tz: 'Europe/London', threshold: 27 },
@@ -42,16 +26,28 @@ const LOCATIONS = [
   { id: 'edinburgh', name: 'Edinburgh', lat: 55.9533, lon: -3.1883, tz: 'Europe/London', threshold: 25 },
 ];
 
+const PERIODS = [
+  { id: '1976', label: '1976', type: 'year', years: ['1976'], color: '#ef4444' },
+  { id: '1940s', label: '1940s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(1940 + i)), color: '#94a3b8' },
+  { id: '1950s', label: '1950s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(1950 + i)), color: '#8b5cf6' },
+  { id: '1960s', label: '1960s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(1960 + i)), color: '#3b82f6' },
+  { id: '1970s', label: '1970s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(1970 + i)), color: '#0ea5e9' },
+  { id: '1980s', label: '1980s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(1980 + i)), color: '#10b981' },
+  { id: '1990s', label: '1990s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(1990 + i)), color: '#84cc16' },
+  { id: '2000s', label: '2000s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(2000 + i)), color: '#eab308' },
+  { id: '2010s', label: '2010s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(2010 + i)), color: '#f97316' },
+  { id: '2020s', label: '2020s', type: 'decade', years: ['2020','2021','2022','2023','2024','2025','2026'], color: '#ec4899' },
+];
+
 function App() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(LOCATIONS[0]);
-  const [sortConfig, setSortConfig] = useState({ key: 'year', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'periodId', direction: 'asc' });
   const [activeTab, setActiveTab] = useState('daily');
   
-  // By default, select 1976 and the current year (2026)
-  const [selectedYears, setSelectedYears] = useState(['1976', '2026']);
+  const [selectedPeriods, setSelectedPeriods] = useState(['1976', '2020s']);
 
   useEffect(() => {
     async function loadData() {
@@ -68,21 +64,39 @@ function App() {
     loadData();
   }, [selectedLocation]);
 
-  const toggleYear = (year) => {
-    setSelectedYears(prev => 
-      prev.includes(year)
-        ? prev.filter(y => y !== year)
-        : [...prev, year]
+  const togglePeriod = (id) => {
+    setSelectedPeriods(prev => 
+      prev.includes(id)
+        ? prev.filter(p => p !== id)
+        : [...prev, id]
     );
   };
 
-  const getHeatwaves = (year) => {
+  const chartData = useMemo(() => {
+    return data.map(dayData => {
+      const newDay = { day: dayData.day };
+      PERIODS.forEach(period => {
+        let sum = 0;
+        let count = 0;
+        period.years.forEach(y => {
+          if (dayData[y] !== undefined && dayData[y] !== null) {
+            sum += dayData[y];
+            count++;
+          }
+        });
+        newDay[period.id] = count > 0 ? Number((sum / count).toFixed(1)) : null;
+      });
+      return newDay;
+    });
+  }, [data]);
+
+  const getHeatwavesForChart = (periodId) => {
     const heatwaves = [];
     let currentStreak = [];
     const HEATWAVE_THRESHOLD = selectedLocation.threshold;
     
-    data.forEach((dayData) => {
-      if (dayData[year] >= HEATWAVE_THRESHOLD) {
+    chartData.forEach((dayData) => {
+      if (dayData[periodId] >= HEATWAVE_THRESHOLD) {
         currentStreak.push(dayData.day);
       } else {
         if (currentStreak.length >= 3) {
@@ -97,42 +111,62 @@ function App() {
     return heatwaves;
   };
 
-  const getStats = (year) => {
-    let tempSum = 0;
-    let tempCount = 0;
-    let dryDays = 0;
-    let currentDrySpell = 0;
-    let maxDrySpell = 0;
+  const getStatsForYear = (year) => {
+    let tempSum = 0; let tempCount = 0;
+    let dryDays = 0; let currentDrySpell = 0; let maxDrySpell = 0;
     let heatwaveDays = 0;
     const threshold = selectedLocation.threshold;
     
     data.forEach(day => {
       const temp = day[year];
       const precip = day[`${year}_precip`];
-      
-      if (temp !== undefined && temp !== null) {
-        tempSum += temp;
-        tempCount++;
+      if (temp != null) {
+        tempSum += temp; tempCount++;
         if (temp >= threshold) heatwaveDays++;
       }
-      
-      if (precip !== undefined && precip !== null) {
+      if (precip != null) {
         if (precip === 0) {
-          dryDays++;
-          currentDrySpell++;
+          dryDays++; currentDrySpell++;
           if (currentDrySpell > maxDrySpell) maxDrySpell = currentDrySpell;
         } else {
           currentDrySpell = 0;
         }
       }
     });
-    
-    const avgTemp = tempCount > 0 ? (tempSum / tempCount).toFixed(1) : 0;
-    return { avgTemp, dryDays, maxDrySpell, heatwaveDays, tempCount };
+    return { 
+      avgTemp: tempCount > 0 ? (tempSum / tempCount) : null,
+      dryDays, maxDrySpell, heatwaveDays, tempCount 
+    };
   };
 
   const trendData = useMemo(() => {
-    return YEARS.map(year => ({ year, ...getStats(year) })).filter(s => s.tempCount > 0);
+    return PERIODS.map(period => {
+      let totalAvgTemp = 0, totalDryDays = 0, totalMaxDrySpell = 0, totalHeatwaves = 0, validYears = 0;
+      
+      period.years.forEach(year => {
+        const stats = getStatsForYear(year);
+        if (stats.tempCount > 0) {
+          totalAvgTemp += stats.avgTemp;
+          totalDryDays += stats.dryDays;
+          totalMaxDrySpell += stats.maxDrySpell;
+          totalHeatwaves += stats.heatwaveDays;
+          validYears++;
+        }
+      });
+      
+      if (validYears === 0) return { periodId: period.id, tempCount: 0 };
+      
+      return {
+        periodId: period.id,
+        label: period.label,
+        color: period.color,
+        tempCount: 1,
+        avgTemp: Number((totalAvgTemp / validYears).toFixed(1)),
+        dryDays: Math.round(totalDryDays / validYears),
+        maxDrySpell: Math.round(totalMaxDrySpell / validYears),
+        heatwaveDays: Math.round(totalHeatwaves / validYears)
+      };
+    }).filter(s => s.tempCount > 0);
   }, [data, selectedLocation]);
 
   const handleSort = (key) => {
@@ -148,9 +182,9 @@ function App() {
     statsArray.sort((a, b) => {
       let aVal = a[sortConfig.key];
       let bVal = b[sortConfig.key];
-      if (sortConfig.key === 'avgTemp') {
-        aVal = parseFloat(aVal);
-        bVal = parseFloat(bVal);
+      if (sortConfig.key === 'periodId') {
+        aVal = a.label;
+        bVal = b.label;
       }
       if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -159,7 +193,7 @@ function App() {
     return statsArray;
   }, [trendData, sortConfig]);
 
-  const renderTrendChart = (dataKey, color, domain = [0, 'auto'], unit = '') => {
+  const renderTrendChart = (dataKey, domain = [0, 'auto'], unit = '') => {
     const validData = trendData.filter(d => d[dataKey] !== undefined && !isNaN(d[dataKey]));
     const avg = validData.length > 0 
       ? validData.reduce((sum, item) => sum + Number(item[dataKey]), 0) / validData.length 
@@ -171,7 +205,7 @@ function App() {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={trendData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
-            <XAxis dataKey="year" tick={{fill: 'var(--text-secondary)', fontSize: 12}} axisLine={false} tickLine={false} />
+            <XAxis dataKey="label" tick={{fill: 'var(--text-secondary)', fontSize: 12}} axisLine={false} tickLine={false} />
             <YAxis tick={{fill: 'var(--text-secondary)', fontSize: 12}} axisLine={false} tickLine={false} domain={domain} unit={unit} />
             <Tooltip 
               cursor={{fill: 'var(--bg-color)'}}
@@ -184,7 +218,11 @@ function App() {
               strokeDasharray="4 4" 
               label={{ position: 'top', value: `Avg: ${avgFormatted}${unit}`, fill: 'var(--text-secondary)', fontSize: 12 }} 
             />
-            <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
+            <Bar dataKey={dataKey} radius={[4, 4, 0, 0]}>
+              {trendData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -195,7 +233,7 @@ function App() {
     return (
       <div className="loading-container">
         <div className="spinner"></div>
-        <p>Loading historical weather data...</p>
+        <p>Loading historical weather data (this may take a moment)...</p>
       </div>
     );
   }
@@ -246,7 +284,7 @@ function App() {
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
-                data={data}
+                data={chartData}
                 margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
@@ -270,15 +308,15 @@ function App() {
                 />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
                 
-                {YEARS.map(year => {
-                  if (!selectedYears.includes(year)) return null;
-                  const heatwaves = getHeatwaves(year);
+                {PERIODS.map(period => {
+                  if (!selectedPeriods.includes(period.id)) return null;
+                  const heatwaves = getHeatwavesForChart(period.id);
                   return heatwaves.map((wave, i) => (
                     <ReferenceArea
-                      key={`hw-${year}-${i}`}
+                      key={`hw-${period.id}-${i}`}
                       x1={wave.start}
                       x2={wave.end}
-                      fill={COLORS[year]}
+                      fill={period.color}
                       fillOpacity={0.15}
                       strokeOpacity={0}
                       ifOverflow="hidden"
@@ -286,16 +324,17 @@ function App() {
                   ));
                 })}
 
-                {YEARS.map(year => (
-                  selectedYears.includes(year) && (
+                {PERIODS.map(period => (
+                  selectedPeriods.includes(period.id) && (
                     <Area
-                      key={year}
+                      key={period.id}
+                      name={period.label}
                       type="monotone"
-                      dataKey={year}
-                      stroke={COLORS[year]}
-                      fill={COLORS[year]}
+                      dataKey={period.id}
+                      stroke={period.color}
+                      fill={period.color}
                       fillOpacity={0.4}
-                      strokeWidth={year === '1976' ? 3 : 2}
+                      strokeWidth={period.id === '1976' ? 3 : 2}
                       dot={false}
                       activeDot={{ r: 6 }}
                     />
@@ -306,24 +345,24 @@ function App() {
           </div>
 
           <div className="stats-container">
-            {selectedYears.map(year => {
-              const stats = trendData.find(s => s.year === year);
+            {selectedPeriods.map(periodId => {
+              const stats = trendData.find(s => s.periodId === periodId);
               if (!stats || stats.tempCount === 0) return null;
               
               return (
-                <div key={`stats-${year}`} className="stat-card" style={{ borderTop: `4px solid ${COLORS[year]}` }}>
-                  <h3 className="stat-title">{year} Season</h3>
+                <div key={`stats-${periodId}`} className="stat-card" style={{ borderTop: `4px solid ${stats.color}` }}>
+                  <h3 className="stat-title">{stats.label} {stats.periodId.includes('s') ? 'Average' : 'Season'}</h3>
                   <div className="stat-grid">
                     <div className="stat-item">
                       <span className="stat-label">Avg Max Temp</span>
                       <span className="stat-value">{stats.avgTemp}°C</span>
                     </div>
                     <div className="stat-item">
-                      <span className="stat-label">Heatwave Days</span>
+                      <span className="stat-label">Heatwave Days / Yr</span>
                       <span className="stat-value">{stats.heatwaveDays}</span>
                     </div>
                     <div className="stat-item">
-                      <span className="stat-label">Dry Days</span>
+                      <span className="stat-label">Dry Days / Yr</span>
                       <span className="stat-value">{stats.dryDays}</span>
                     </div>
                     <div className="stat-item">
@@ -337,20 +376,20 @@ function App() {
           </div>
 
           <div className="controls-container">
-            {YEARS.map(year => {
-              const isActive = selectedYears.includes(year);
+            {PERIODS.map(period => {
+              const isActive = selectedPeriods.includes(period.id);
               return (
                 <button
-                  key={year}
+                  key={period.id}
                   className={`year-toggle ${isActive ? 'active' : ''}`}
-                  onClick={() => toggleYear(year)}
+                  onClick={() => togglePeriod(period.id)}
                   style={isActive ? {
-                    backgroundColor: COLORS[year],
-                    borderColor: COLORS[year],
+                    backgroundColor: period.color,
+                    borderColor: period.color,
                     color: 'white'
                   } : {}}
                 >
-                  {year}
+                  {period.label}
                 </button>
               );
             })}
@@ -358,9 +397,9 @@ function App() {
         </>
       )}
 
-      {activeTab === 'avgTemp' && renderTrendChart('avgTemp', 'var(--chart-2016)', ['dataMin - 1', 'dataMax + 1'], '°C')}
-      {activeTab === 'heatwaves' && renderTrendChart('heatwaveDays', 'var(--chart-1976)')}
-      {activeTab === 'dryDays' && renderTrendChart('dryDays', 'var(--chart-2019)')}
+      {activeTab === 'avgTemp' && renderTrendChart('avgTemp', ['dataMin - 1', 'dataMax + 1'], '°C')}
+      {activeTab === 'heatwaves' && renderTrendChart('heatwaveDays')}
+      {activeTab === 'dryDays' && renderTrendChart('dryDays')}
 
       <div className="table-container">
         <h2 className="table-title">Historical Season Rankings</h2>
@@ -368,17 +407,17 @@ function App() {
           <table className="stats-table">
             <thead>
               <tr>
-                <th onClick={() => handleSort('year')}>Year {sortConfig.key === 'year' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                <th onClick={() => handleSort('periodId')}>Period {sortConfig.key === 'periodId' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                 <th onClick={() => handleSort('avgTemp')}>Avg Max Temp {sortConfig.key === 'avgTemp' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-                <th onClick={() => handleSort('heatwaveDays')}>Heatwave Days {sortConfig.key === 'heatwaveDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-                <th onClick={() => handleSort('dryDays')}>Dry Days {sortConfig.key === 'dryDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                <th onClick={() => handleSort('heatwaveDays')}>Heatwave Days / Yr {sortConfig.key === 'heatwaveDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                <th onClick={() => handleSort('dryDays')}>Dry Days / Yr {sortConfig.key === 'dryDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                 <th onClick={() => handleSort('maxDrySpell')}>Longest Dry Spell {sortConfig.key === 'maxDrySpell' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
               </tr>
             </thead>
             <tbody>
               {sortedStats.map(stat => (
-                <tr key={`table-${stat.year}`}>
-                  <td style={{fontWeight: 600, color: COLORS[stat.year]}}>{stat.year}</td>
+                <tr key={`table-${stat.periodId}`}>
+                  <td style={{fontWeight: 600, color: stat.color}}>{stat.label}</td>
                   <td>{stat.avgTemp}°C</td>
                   <td>{stat.heatwaveDays}</td>
                   <td>{stat.dryDays}</td>
