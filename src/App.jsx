@@ -113,7 +113,7 @@ function App() {
       });
       return newDay;
     });
-  }, [data]);
+  }, [data, viewMode]);
 
   const getHeatwavesForChart = (periodId) => {
     const heatwaves = [];
@@ -192,7 +192,7 @@ function App() {
         heatwaveDays: Math.round(totalHeatwaves / validYears)
       };
     }).filter(s => s.tempCount > 0);
-  }, [data, selectedLocation]);
+  }, [data, selectedLocation, viewMode]);
 
   const handleSort = (key) => {
     let direction = 'desc';
