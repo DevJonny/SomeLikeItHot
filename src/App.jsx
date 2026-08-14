@@ -524,7 +524,7 @@ function App() {
           </div>
 
           <div className="stats-container">
-            {selectedPeriods.map(periodId => {
+            {[...selectedPeriods].sort().map(periodId => {
               const stats = trendData.find(s => s.periodId === periodId);
               if (!stats || stats.tempCount === 0) return null;
               
