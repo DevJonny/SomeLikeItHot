@@ -55,6 +55,38 @@
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+.view-mode-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  background: var(--surface-color);
+  padding: 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.view-mode-toggle button {
+  background: transparent;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.view-mode-toggle button.active {
+  background: var(--text-primary);
+  color: var(--surface-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
 .tabs-container {
   display: flex;
   justify-content: center;
@@ -214,24 +246,31 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: center;
-  background: var(--surface-color);
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--border-color);
+  margin-bottom: 2rem;
+}
+
+.controls-container.compact {
+  gap: 0.25rem;
 }
 
 .year-toggle {
-  background: transparent;
-  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  border: 2px solid transparent;
   color: var(--text-secondary);
-  padding: 0.5rem 1rem;
-  border-radius: 9999px; /* pill shape */
+  padding: 0.5rem 1.25rem;
+  border-radius: 24px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: var(--font-sans);
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.controls-container.compact .year-toggle {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 8px;
+  border-width: 1px;
 }
 
 .year-toggle:hover {

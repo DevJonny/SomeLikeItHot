@@ -26,7 +26,7 @@ const LOCATIONS = [
   { id: 'edinburgh', name: 'Edinburgh', lat: 55.9533, lon: -3.1883, tz: 'Europe/London', threshold: 25 },
 ];
 
-const PERIODS = [
+const DECADE_PERIODS = [
   { id: '1976', label: '1976', type: 'year', years: ['1976'], color: '#ef4444' },
   { id: '1940s', label: '1940s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(1940 + i)), color: '#94a3b8' },
   { id: '1950s', label: '1950s', type: 'decade', years: Array.from({length: 10}, (_, i) => String(1950 + i)), color: '#8b5cf6' },
@@ -39,6 +39,19 @@ const PERIODS = [
   { id: '2020s', label: '2020s', type: 'decade', years: ['2020','2021','2022','2023','2024','2025','2026'], color: '#ec4899' },
 ];
 
+const YEAR_PERIODS = Array.from({length: 87}, (_, i) => {
+  const year = String(1940 + i);
+  // Color palette cycling through hues to ensure distinct colors for each year
+  const hue = (i * 137.5) % 360;
+  return {
+    id: year,
+    label: year,
+    type: 'year',
+    years: [year],
+    color: `hsl(${hue}, 70%, 50%)`
+  };
+});
+
 function App() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,8 +59,11 @@ function App() {
   const [selectedLocation, setSelectedLocation] = useState(LOCATIONS[0]);
   const [sortConfig, setSortConfig] = useState({ key: 'periodId', direction: 'asc' });
   const [activeTab, setActiveTab] = useState('daily');
+  const [viewMode, setViewMode] = useState('decades'); // 'decades' or 'years'
   
   const [selectedPeriods, setSelectedPeriods] = useState(['1976', '2020s']);
+
+  const PERIODS = viewMode === 'decades' ? DECADE_PERIODS : YEAR_PERIODS;
 
   useEffect(() => {
     async function loadData() {
@@ -63,6 +79,15 @@ function App() {
     }
     loadData();
   }, [selectedLocation]);
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    if (mode === 'decades') {
+      setSelectedPeriods(['1976', '2020s']);
+    } else {
+      setSelectedPeriods(['1976', '2026']);
+    }
+  };
 
   const togglePeriod = (id) => {
     setSelectedPeriods(prev => 
@@ -271,6 +296,11 @@ function App() {
           * Highlighted vertical bands indicate a heatwave (3+ consecutive days ≥ {selectedLocation.threshold}°C)
         </p>
 
+        <div className="view-mode-toggle">
+          <button className={viewMode === 'decades' ? 'active' : ''} onClick={() => handleViewModeChange('decades')}>Decades</button>
+          <button className={viewMode === 'years' ? 'active' : ''} onClick={() => handleViewModeChange('years')}>Years</button>
+        </div>
+
         <div className="tabs-container">
           <button className={`tab ${activeTab === 'daily' ? 'active' : ''}`} onClick={() => setActiveTab('daily')}>Daily View</button>
           <button className={`tab ${activeTab === 'avgTemp' ? 'active' : ''}`} onClick={() => setActiveTab('avgTemp')}>Avg Temp Trend</button>
@@ -358,11 +388,11 @@ function App() {
                       <span className="stat-value">{stats.avgTemp}°C</span>
                     </div>
                     <div className="stat-item">
-                      <span className="stat-label">Heatwave Days / Yr</span>
+                      <span className="stat-label">Heatwave Days{viewMode === 'decades' ? ' / Yr' : ''}</span>
                       <span className="stat-value">{stats.heatwaveDays}</span>
                     </div>
                     <div className="stat-item">
-                      <span className="stat-label">Dry Days / Yr</span>
+                      <span className="stat-label">Dry Days{viewMode === 'decades' ? ' / Yr' : ''}</span>
                       <span className="stat-value">{stats.dryDays}</span>
                     </div>
                     <div className="stat-item">
@@ -375,7 +405,7 @@ function App() {
             })}
           </div>
 
-          <div className="controls-container">
+          <div className={`controls-container ${viewMode === 'years' ? 'compact' : ''}`}>
             {PERIODS.map(period => {
               const isActive = selectedPeriods.includes(period.id);
               return (
@@ -409,8 +439,8 @@ function App() {
               <tr>
                 <th onClick={() => handleSort('periodId')}>Period {sortConfig.key === 'periodId' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                 <th onClick={() => handleSort('avgTemp')}>Avg Max Temp {sortConfig.key === 'avgTemp' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-                <th onClick={() => handleSort('heatwaveDays')}>Heatwave Days / Yr {sortConfig.key === 'heatwaveDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-                <th onClick={() => handleSort('dryDays')}>Dry Days / Yr {sortConfig.key === 'dryDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                <th onClick={() => handleSort('heatwaveDays')}>Heatwave Days{viewMode === 'decades' ? ' / Yr' : ''} {sortConfig.key === 'heatwaveDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                <th onClick={() => handleSort('dryDays')}>Dry Days{viewMode === 'decades' ? ' / Yr' : ''} {sortConfig.key === 'dryDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                 <th onClick={() => handleSort('maxDrySpell')}>Longest Dry Spell {sortConfig.key === 'maxDrySpell' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
               </tr>
             </thead>
