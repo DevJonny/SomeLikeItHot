@@ -3,6 +3,8 @@ import { fetchWeatherData } from './weatherService';
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -45,6 +47,7 @@ function App() {
   const [error, setError] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(LOCATIONS[0]);
   const [sortConfig, setSortConfig] = useState({ key: 'year', direction: 'desc' });
+  const [activeTab, setActiveTab] = useState('daily');
   
   // By default, select 1976 and the current year (2026)
   const [selectedYears, setSelectedYears] = useState(['1976', '2026']);
@@ -127,6 +130,10 @@ function App() {
     return { avgTemp, dryDays, maxDrySpell, heatwaveDays, tempCount };
   };
 
+  const trendData = useMemo(() => {
+    return YEARS.map(year => ({ year, ...getStats(year) })).filter(s => s.tempCount > 0);
+  }, [data, selectedLocation]);
+
   const handleSort = (key) => {
     let direction = 'desc';
     if (sortConfig.key === key && sortConfig.direction === 'desc') {
@@ -136,7 +143,7 @@ function App() {
   };
 
   const sortedStats = useMemo(() => {
-    const statsArray = YEARS.map(year => ({ year, ...getStats(year) })).filter(s => s.tempCount > 0);
+    const statsArray = [...trendData];
     statsArray.sort((a, b) => {
       let aVal = a[sortConfig.key];
       let bVal = b[sortConfig.key];
@@ -149,7 +156,25 @@ function App() {
       return 0;
     });
     return statsArray;
-  }, [data, selectedLocation, sortConfig]);
+  }, [trendData, sortConfig]);
+
+  const renderTrendChart = (dataKey, color, domain = [0, 'auto'], unit = '') => (
+    <div className="chart-container">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={trendData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+          <XAxis dataKey="year" tick={{fill: 'var(--text-secondary)', fontSize: 12}} axisLine={false} tickLine={false} />
+          <YAxis tick={{fill: 'var(--text-secondary)', fontSize: 12}} axisLine={false} tickLine={false} domain={domain} unit={unit} />
+          <Tooltip 
+            cursor={{fill: 'var(--bg-color)'}}
+            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} 
+            labelStyle={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.5rem' }}
+          />
+          <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -192,120 +217,135 @@ function App() {
         <p style={{fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem'}}>
           * Highlighted vertical bands indicate a heatwave (3+ consecutive days ≥ {selectedLocation.threshold}°C)
         </p>
+
+        <div className="tabs-container">
+          <button className={`tab ${activeTab === 'daily' ? 'active' : ''}`} onClick={() => setActiveTab('daily')}>Daily View</button>
+          <button className={`tab ${activeTab === 'avgTemp' ? 'active' : ''}`} onClick={() => setActiveTab('avgTemp')}>Avg Temp Trend</button>
+          <button className={`tab ${activeTab === 'heatwaves' ? 'active' : ''}`} onClick={() => setActiveTab('heatwaves')}>Heatwaves Trend</button>
+          <button className={`tab ${activeTab === 'dryDays' ? 'active' : ''}`} onClick={() => setActiveTab('dryDays')}>Dry Days Trend</button>
+        </div>
       </header>
 
-      <div className="chart-container">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={data}
-            margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
-            <XAxis 
-              dataKey="day" 
-              tick={{fill: 'var(--text-secondary)', fontSize: 12}}
-              axisLine={false}
-              tickLine={false}
-              minTickGap={30}
-            />
-            <YAxis 
-              tick={{fill: 'var(--text-secondary)', fontSize: 12}}
-              axisLine={false}
-              tickLine={false}
-              unit="°C"
-              domain={['dataMin - 5', 'dataMax + 2']}
-            />
-            <Tooltip 
-              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-              labelStyle={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.5rem' }}
-            />
-            <Legend wrapperStyle={{ paddingTop: '20px' }} />
-            
-            {YEARS.map(year => {
-              if (!selectedYears.includes(year)) return null;
-              const heatwaves = getHeatwaves(year);
-              return heatwaves.map((wave, i) => (
-                <ReferenceArea
-                  key={`hw-${year}-${i}`}
-                  x1={wave.start}
-                  x2={wave.end}
-                  fill={COLORS[year]}
-                  fillOpacity={0.15}
-                  strokeOpacity={0}
-                  ifOverflow="hidden"
+      {activeTab === 'daily' && (
+        <>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={data}
+                margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+                <XAxis 
+                  dataKey="day" 
+                  tick={{fill: 'var(--text-secondary)', fontSize: 12}}
+                  axisLine={false}
+                  tickLine={false}
+                  minTickGap={30}
                 />
-              ));
+                <YAxis 
+                  tick={{fill: 'var(--text-secondary)', fontSize: 12}}
+                  axisLine={false}
+                  tickLine={false}
+                  unit="°C"
+                  domain={['dataMin - 5', 'dataMax + 2']}
+                />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  labelStyle={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.5rem' }}
+                />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                
+                {YEARS.map(year => {
+                  if (!selectedYears.includes(year)) return null;
+                  const heatwaves = getHeatwaves(year);
+                  return heatwaves.map((wave, i) => (
+                    <ReferenceArea
+                      key={`hw-${year}-${i}`}
+                      x1={wave.start}
+                      x2={wave.end}
+                      fill={COLORS[year]}
+                      fillOpacity={0.15}
+                      strokeOpacity={0}
+                      ifOverflow="hidden"
+                    />
+                  ));
+                })}
+
+                {YEARS.map(year => (
+                  selectedYears.includes(year) && (
+                    <Area
+                      key={year}
+                      type="monotone"
+                      dataKey={year}
+                      stroke={COLORS[year]}
+                      fill={COLORS[year]}
+                      fillOpacity={0.4}
+                      strokeWidth={year === '1976' ? 3 : 2}
+                      dot={false}
+                      activeDot={{ r: 6 }}
+                    />
+                  )
+                ))}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="stats-container">
+            {selectedYears.map(year => {
+              const stats = trendData.find(s => s.year === year);
+              if (!stats || stats.tempCount === 0) return null;
+              
+              return (
+                <div key={`stats-${year}`} className="stat-card" style={{ borderTop: `4px solid ${COLORS[year]}` }}>
+                  <h3 className="stat-title">{year} Season</h3>
+                  <div className="stat-grid">
+                    <div className="stat-item">
+                      <span className="stat-label">Avg Max Temp</span>
+                      <span className="stat-value">{stats.avgTemp}°C</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Heatwave Days</span>
+                      <span className="stat-value">{stats.heatwaveDays}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Dry Days</span>
+                      <span className="stat-value">{stats.dryDays}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Longest Dry Spell</span>
+                      <span className="stat-value">{stats.maxDrySpell} days</span>
+                    </div>
+                  </div>
+                </div>
+              );
             })}
+          </div>
 
-            {YEARS.map(year => (
-              selectedYears.includes(year) && (
-                <Area
+          <div className="controls-container">
+            {YEARS.map(year => {
+              const isActive = selectedYears.includes(year);
+              return (
+                <button
                   key={year}
-                  type="monotone"
-                  dataKey={year}
-                  stroke={COLORS[year]}
-                  fill={COLORS[year]}
-                  fillOpacity={0.4}
-                  strokeWidth={year === '1976' ? 3 : 2}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                />
-              )
-            ))}
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+                  className={`year-toggle ${isActive ? 'active' : ''}`}
+                  onClick={() => toggleYear(year)}
+                  style={isActive ? {
+                    backgroundColor: COLORS[year],
+                    borderColor: COLORS[year],
+                    color: 'white'
+                  } : {}}
+                >
+                  {year}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
-      <div className="stats-container">
-        {selectedYears.map(year => {
-          const stats = getStats(year);
-          if (stats.tempCount === 0) return null;
-          
-          return (
-            <div key={`stats-${year}`} className="stat-card" style={{ borderTop: `4px solid ${COLORS[year]}` }}>
-              <h3 className="stat-title">{year} Season</h3>
-              <div className="stat-grid">
-                <div className="stat-item">
-                  <span className="stat-label">Avg Max Temp</span>
-                  <span className="stat-value">{stats.avgTemp}°C</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Heatwave Days</span>
-                  <span className="stat-value">{stats.heatwaveDays}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Dry Days</span>
-                  <span className="stat-value">{stats.dryDays}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Longest Dry Spell</span>
-                  <span className="stat-value">{stats.maxDrySpell} days</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="controls-container">
-        {YEARS.map(year => {
-          const isActive = selectedYears.includes(year);
-          return (
-            <button
-              key={year}
-              className={`year-toggle ${isActive ? 'active' : ''}`}
-              onClick={() => toggleYear(year)}
-              style={isActive ? {
-                backgroundColor: COLORS[year],
-                borderColor: COLORS[year],
-                color: 'white'
-              } : {}}
-            >
-              {year}
-            </button>
-          );
-        })}
-      </div>
+      {activeTab === 'avgTemp' && renderTrendChart('avgTemp', 'var(--chart-2016)', ['dataMin - 1', 'dataMax + 1'], '°C')}
+      {activeTab === 'heatwaves' && renderTrendChart('heatwaveDays', 'var(--chart-1976)')}
+      {activeTab === 'dryDays' && renderTrendChart('dryDays', 'var(--chart-2019)')}
 
       <div className="table-container">
         <h2 className="table-title">Historical Season Rankings</h2>
