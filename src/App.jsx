@@ -367,6 +367,7 @@ function App() {
                       strokeWidth={period.id === '1976' ? 3 : 2}
                       dot={false}
                       activeDot={{ r: 6 }}
+                      connectNulls={true}
                     />
                   )
                 ))}
