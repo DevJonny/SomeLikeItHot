@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { fetchWeatherData } from './weatherService';
 import {
   AreaChart,
@@ -44,6 +44,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(LOCATIONS[0]);
+  const [sortConfig, setSortConfig] = useState({ key: 'year', direction: 'desc' });
   
   // By default, select 1976 and the current year (2026)
   const [selectedYears, setSelectedYears] = useState(['1976', '2026']);
@@ -125,6 +126,30 @@ function App() {
     const avgTemp = tempCount > 0 ? (tempSum / tempCount).toFixed(1) : 0;
     return { avgTemp, dryDays, maxDrySpell, heatwaveDays, tempCount };
   };
+
+  const handleSort = (key) => {
+    let direction = 'desc';
+    if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedStats = useMemo(() => {
+    const statsArray = YEARS.map(year => ({ year, ...getStats(year) })).filter(s => s.tempCount > 0);
+    statsArray.sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+      if (sortConfig.key === 'avgTemp') {
+        aVal = parseFloat(aVal);
+        bVal = parseFloat(bVal);
+      }
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return statsArray;
+  }, [data, selectedLocation, sortConfig]);
 
   if (loading) {
     return (
@@ -280,6 +305,34 @@ function App() {
             </button>
           );
         })}
+      </div>
+
+      <div className="table-container">
+        <h2 className="table-title">Historical Season Rankings</h2>
+        <div className="table-wrapper">
+          <table className="stats-table">
+            <thead>
+              <tr>
+                <th onClick={() => handleSort('year')}>Year {sortConfig.key === 'year' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                <th onClick={() => handleSort('avgTemp')}>Avg Max Temp {sortConfig.key === 'avgTemp' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                <th onClick={() => handleSort('heatwaveDays')}>Heatwave Days {sortConfig.key === 'heatwaveDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                <th onClick={() => handleSort('dryDays')}>Dry Days {sortConfig.key === 'dryDays' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                <th onClick={() => handleSort('maxDrySpell')}>Longest Dry Spell {sortConfig.key === 'maxDrySpell' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedStats.map(stat => (
+                <tr key={`table-${stat.year}`}>
+                  <td style={{fontWeight: 600, color: COLORS[stat.year]}}>{stat.year}</td>
+                  <td>{stat.avgTemp}°C</td>
+                  <td>{stat.heatwaveDays}</td>
+                  <td>{stat.dryDays}</td>
+                  <td>{stat.maxDrySpell} days</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
