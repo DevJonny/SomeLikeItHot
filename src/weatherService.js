@@ -1,7 +1,7 @@
 export async function fetchWeatherData(lat = 51.5072, lon = -0.1276, tz = 'Europe/London') {
   try {
     // 1976 data
-    const res1976 = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=1976-05-01&end_date=1976-09-30&daily=temperature_2m_max&timezone=${tz}`);
+    const res1976 = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=1976-05-01&end_date=1976-09-30&daily=temperature_2m_max,precipitation_sum&timezone=${tz}`);
     if (!res1976.ok) throw new Error("Failed to fetch 1976 data");
     const data1976 = await res1976.json();
     
@@ -11,7 +11,7 @@ export async function fetchWeatherData(lat = 51.5072, lon = -0.1276, tz = 'Europ
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = yesterday.toISOString().split('T')[0];
     
-    const res2016_2026 = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=2016-05-01&end_date=${endDate}&daily=temperature_2m_max&timezone=${tz}`);
+    const res2016_2026 = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=2016-05-01&end_date=${endDate}&daily=temperature_2m_max,precipitation_sum&timezone=${tz}`);
     if (!res2016_2026.ok) throw new Error("Failed to fetch recent data");
     const data2016_2026 = await res2016_2026.json();
     
@@ -36,8 +36,10 @@ export async function fetchWeatherData(lat = 51.5072, lon = -0.1276, tz = 'Europ
       const [, month, day] = timeStr.split('-');
       const dateStr = `${month}-${day}`;
       const temp = data1976.daily.temperature_2m_max[index];
+      const precip = data1976.daily.precipitation_sum[index];
       if (daysMap.has(dateStr)) {
         daysMap.get(dateStr)['1976'] = temp;
+        daysMap.get(dateStr)['1976_precip'] = precip;
       }
     });
     
@@ -46,8 +48,10 @@ export async function fetchWeatherData(lat = 51.5072, lon = -0.1276, tz = 'Europ
       const [year, month, day] = timeStr.split('-');
       const dateStr = `${month}-${day}`;
       const temp = data2016_2026.daily.temperature_2m_max[index];
+      const precip = data2016_2026.daily.precipitation_sum[index];
       if (['05', '06', '07', '08', '09'].includes(month) && daysMap.has(dateStr) && temp !== null) {
         daysMap.get(dateStr)[year] = temp;
+        daysMap.get(dateStr)[`${year}_precip`] = precip;
       }
     });
     

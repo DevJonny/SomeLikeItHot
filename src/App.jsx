@@ -92,6 +92,40 @@ function App() {
     return heatwaves;
   };
 
+  const getStats = (year) => {
+    let tempSum = 0;
+    let tempCount = 0;
+    let dryDays = 0;
+    let currentDrySpell = 0;
+    let maxDrySpell = 0;
+    let heatwaveDays = 0;
+    const threshold = selectedLocation.threshold;
+    
+    data.forEach(day => {
+      const temp = day[year];
+      const precip = day[`${year}_precip`];
+      
+      if (temp !== undefined && temp !== null) {
+        tempSum += temp;
+        tempCount++;
+        if (temp >= threshold) heatwaveDays++;
+      }
+      
+      if (precip !== undefined && precip !== null) {
+        if (precip === 0) {
+          dryDays++;
+          currentDrySpell++;
+          if (currentDrySpell > maxDrySpell) maxDrySpell = currentDrySpell;
+        } else {
+          currentDrySpell = 0;
+        }
+      }
+    });
+    
+    const avgTemp = tempCount > 0 ? (tempSum / tempCount).toFixed(1) : 0;
+    return { avgTemp, dryDays, maxDrySpell, heatwaveDays, tempCount };
+  };
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -195,6 +229,37 @@ function App() {
             ))}
           </AreaChart>
         </ResponsiveContainer>
+      </div>
+
+      <div className="stats-container">
+        {selectedYears.map(year => {
+          const stats = getStats(year);
+          if (stats.tempCount === 0) return null;
+          
+          return (
+            <div key={`stats-${year}`} className="stat-card" style={{ borderTop: `4px solid ${COLORS[year]}` }}>
+              <h3 className="stat-title">{year} Season</h3>
+              <div className="stat-grid">
+                <div className="stat-item">
+                  <span className="stat-label">Avg Max Temp</span>
+                  <span className="stat-value">{stats.avgTemp}°C</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Heatwave Days</span>
+                  <span className="stat-value">{stats.heatwaveDays}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Dry Days</span>
+                  <span className="stat-value">{stats.dryDays}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Longest Dry Spell</span>
+                  <span className="stat-value">{stats.maxDrySpell} days</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="controls-container">
