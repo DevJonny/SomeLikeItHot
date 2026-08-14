@@ -56,14 +56,45 @@ function App() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedLocation, setSelectedLocation] = useState(LOCATIONS[0]);
-  const [sortConfig, setSortConfig] = useState({ key: 'periodId', direction: 'asc' });
-  const [activeTab, setActiveTab] = useState('daily');
-  const [viewMode, setViewMode] = useState('decades'); // 'decades' or 'years'
   
-  const [selectedPeriods, setSelectedPeriods] = useState(['1976', '2020s']);
+  const [selectedLocation, setSelectedLocation] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return LOCATIONS.find(l => l.id === params.get('loc')) || LOCATIONS[0];
+  });
+  
+  const [sortConfig, setSortConfig] = useState({ key: 'periodId', direction: 'asc' });
+  
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'daily';
+  });
+  
+  const [viewMode, setViewMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') || 'decades';
+  });
+  
+  const [selectedPeriods, setSelectedPeriods] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode') || 'decades';
+    const periodsParam = params.get('periods');
+    if (periodsParam) return periodsParam.split(',');
+    return mode === 'decades' ? ['1976', '2020s'] : ['1976', '2026'];
+  });
 
   const PERIODS = viewMode === 'decades' ? DECADE_PERIODS : YEAR_PERIODS;
+
+  // Sync state to URL for deeplinking
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('loc', selectedLocation.id);
+    params.set('tab', activeTab);
+    params.set('mode', viewMode);
+    params.set('periods', selectedPeriods.join(','));
+    
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+  }, [selectedLocation.id, activeTab, viewMode, selectedPeriods]);
 
   useEffect(() => {
     async function loadData() {
