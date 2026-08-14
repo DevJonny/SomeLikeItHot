@@ -129,7 +129,10 @@ function App() {
   };
 
   const chartData = useMemo(() => {
-    return data.map(dayData => {
+    let globalMin = Infinity;
+    let globalMax = -Infinity;
+    
+    const mappedData = data.map(dayData => {
       const newDay = { day: dayData.day };
       PERIODS.forEach(period => {
         let sum = 0;
@@ -141,11 +144,20 @@ function App() {
           }
         });
         if (count > 0) {
-          newDay[period.id] = Number((sum / count).toFixed(1));
+          const val = Number((sum / count).toFixed(1));
+          newDay[period.id] = val;
+          if (val < globalMin) globalMin = val;
+          if (val > globalMax) globalMax = val;
         }
       });
       return newDay;
     });
+    
+    return { 
+      data: mappedData, 
+      min: globalMin !== Infinity ? Math.floor(globalMin) - 5 : 0,
+      max: globalMax !== -Infinity ? Math.ceil(globalMax) + 2 : 40
+    };
   }, [data, viewMode]);
 
   const getHeatwavesForChart = (periodId) => {
@@ -153,7 +165,7 @@ function App() {
     let currentStreak = [];
     const HEATWAVE_THRESHOLD = selectedLocation.threshold;
     
-    chartData.forEach((dayData) => {
+    chartData.data.forEach((dayData) => {
       if (dayData[periodId] >= HEATWAVE_THRESHOLD) {
         currentStreak.push(dayData.day);
       } else {
@@ -347,7 +359,7 @@ function App() {
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
-                data={chartData}
+                data={chartData.data}
                 margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
@@ -363,7 +375,7 @@ function App() {
                   axisLine={false}
                   tickLine={false}
                   unit="°C"
-                  domain={['dataMin - 5', 'dataMax + 2']}
+                  domain={[chartData.min, chartData.max]}
                 />
                 <Tooltip 
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
@@ -400,8 +412,7 @@ function App() {
                       strokeWidth={period.id === '1976' ? 3 : 2}
                       dot={false}
                       activeDot={{ r: 6 }}
-                      connectNulls={true}
-                      baseValue="dataMin"
+                      baseValue={chartData.min}
                     />
                   )
                 ))}
