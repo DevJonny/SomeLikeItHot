@@ -1,0 +1,45 @@
+/* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg-color: #f8f9fa;
+  --surface-color: #ffffff;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+  
+  --chart-1976: #ef4444; /* red for the famous 1976 */
+  --chart-2016: #d946ef;
+  --chart-2017: #8b5cf6;
+  --chart-2018: #3b82f6;
+  --chart-2019: #0ea5e9;
+  --chart-2020: #10b981;
+  --chart-2021: #22c55e;
+  --chart-2022: #84cc16;
+  --chart-2023: #eab308;
+  --chart-2024: #f59e0b;
+  --chart-2025: #f97316;
+  --chart-2026: #ec4899;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Utilities */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
